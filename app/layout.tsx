@@ -3,6 +3,12 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Genie Schedule",
+  applicationName: "Genie Schedule",
+  appleWebApp: {
+    capable: true,
+    title: "Genie Schedule",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
