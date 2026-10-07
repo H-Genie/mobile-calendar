@@ -38,7 +38,7 @@ type DayGroup = {
 function formatDayLabel(key: string, todayKey: string): string {
   if (key === "no-date") return "날짜 없음"
   const d = dayjs(key)
-  const label = d.format("M월 D일 (ddd)")
+  const label = d.format("YYYY년 M월 D일 (ddd)")
   if (key === todayKey) return `오늘 · ${label}`
   if (key === dayjs(todayKey).add(1, "day").format("YYYY-MM-DD")) {
     return `내일 · ${label}`
@@ -154,7 +154,7 @@ export function EventList({
     <main style={styles.main}>
       <header style={styles.header}>
         <h1 style={styles.title}>캘린더</h1>
-        <p style={styles.subtitle}>위·아래로 스크롤해 일정을 더 불러오세요</p>
+        {/* <p style={styles.subtitle}>위·아래로 스크롤해 일정을 더 불러오세요</p> */}
       </header>
 
       {error && <div style={styles.error}>{error}</div>}
@@ -324,8 +324,8 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 700,
     color: "#3a3a3c",
     background: "rgba(255,255,255,0.92)",
-    backdropFilter: "blur(8px)",
-    borderBottom: "1px solid #efeff4"
+    backdropFilter: "blur(8px)"
+    // borderBottom: "1px solid #efeff4"
   },
   dayLabelToday: {
     color: "#007aff"
