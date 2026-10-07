@@ -91,7 +91,12 @@ function todayLineIndex(
   )
   if (idx > 0) return idx
   if (idx === 0 && anchorDate <= todayKey) return 0
-  if (idx < 0 && !hasMoreFuture && anchorDate <= todayKey && groups.length > 0) {
+  if (
+    idx < 0 &&
+    !hasMoreFuture &&
+    anchorDate <= todayKey &&
+    groups.length > 0
+  ) {
     return "end"
   }
   return null
@@ -200,7 +205,7 @@ export function EventList({
   return (
     <main style={styles.main}>
       <header className="app-header">
-        <h1 className="app-header-title">캘린더</h1>
+        <h1 className="app-header-title">Genie Schedule</h1>
         <div className="app-header-actions">
           <button type="button" className="header-btn" onClick={onGoToday}>
             오늘
