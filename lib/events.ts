@@ -10,10 +10,7 @@ export type EventItem = {
 type NotionProperties = Record<string, any>;
 
 /** 공개 Notion 사이트 (로그인 없이 열람) */
-const NOTION_SITE_BASE = (
-  process.env.NEXT_PUBLIC_NOTION_SITE_URL ??
-  "https://smiling-maraca-9c0.notion.site"
-).replace(/\/$/, "");
+const NOTION_SITE_BASE = "https://smiling-maraca-9c0.notion.site";
 
 /** page id → 공개 사이트 URL */
 export function toPublicNotionUrl(pageId: string): string {
