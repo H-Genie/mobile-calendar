@@ -42,11 +42,13 @@ body {
   border-bottom: 1px solid #efeff4;
 }
 
-.app-header-title {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+.app-header-logo {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .app-header-actions {

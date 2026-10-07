@@ -7,12 +7,8 @@ import {
   useRef,
   type CSSProperties
 } from "react"
-import dayjs from "dayjs"
-import "dayjs/locale/ko"
 import type { EventItem } from "@/lib/events"
 import { dateKey } from "@/lib/events"
-
-dayjs.locale("ko")
 
 type EventListProps = {
   items: EventItem[]
@@ -42,25 +38,51 @@ type DayGroup = {
   items: EventItem[]
 }
 
+const WEEKDAY_KO = ["일", "월", "화", "수", "목", "금", "토"] as const
+
+/** YYYY-MM-DD → 로컬 Date (타임존 밀림 방지) */
+function parseLocalDate(isoDate: string): Date {
+  const [y, m, d] = isoDate.slice(0, 10).split("-").map(Number)
+  return new Date(y, m - 1, d)
+}
+
+function toISODate(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, "0")
+  const d = String(date.getDate()).padStart(2, "0")
+  return `${y}-${m}-${d}`
+}
+
+function addDays(isoDate: string, days: number): string {
+  const date = parseLocalDate(isoDate)
+  date.setDate(date.getDate() + days)
+  return toISODate(date)
+}
+
 function formatDayLabel(key: string, todayKey: string): string {
   if (key === "no-date") return "날짜 없음"
-  const d = dayjs(key)
-  const label = d.format("YYYY년 M월 D일 (ddd)")
+  const date = parseLocalDate(key)
+  const label = `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${WEEKDAY_KO[date.getDay()]})`
   if (key === todayKey) return `오늘 · ${label}`
-  if (key === dayjs(todayKey).add(1, "day").format("YYYY-MM-DD")) {
-    return `내일 · ${label}`
-  }
-  if (key === dayjs(todayKey).subtract(1, "day").format("YYYY-MM-DD")) {
-    return `어제 · ${label}`
-  }
+  if (key === addDays(todayKey, 1)) return `내일 · ${label}`
+  if (key === addDays(todayKey, -1)) return `어제 · ${label}`
   return label
 }
 
 function formatTime(value: string | null): string | null {
   if (!value || !value.includes("T")) return null
-  const d = dayjs(value)
-  if (d.hour() === 0 && d.minute() === 0 && d.second() === 0) return null
-  return d.format("HH:mm")
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  if (
+    date.getHours() === 0 &&
+    date.getMinutes() === 0 &&
+    date.getSeconds() === 0
+  ) {
+    return null
+  }
+  return `${String(date.getHours()).padStart(2, "0")}:${String(
+    date.getMinutes()
+  ).padStart(2, "0")}`
 }
 
 function groupByDay(items: EventItem[], todayKey: string): DayGroup[] {
@@ -205,7 +227,13 @@ export function EventList({
   return (
     <main style={styles.main}>
       <header className="app-header">
-        <h1 className="app-header-title">Genie Schedule</h1>
+        <img
+          className="app-header-logo"
+          src="/icon.png"
+          alt="Genie Schedule"
+          width={28}
+          height={28}
+        />
         <div className="app-header-actions">
           <button type="button" className="header-btn" onClick={onGoToday}>
             오늘
@@ -279,9 +307,7 @@ export function EventList({
                         const time = formatTime(item.date)
                         const content = (
                           <>
-                            <div style={styles.timeCol}>
-                              {time ?? <span style={styles.allDay}>종일</span>}
-                            </div>
+                            <div style={styles.timeCol}>{time}</div>
                             <div style={styles.bodyCol}>
                               <div style={styles.itemTitle}>{item.title}</div>
                               {item.location && (
