@@ -20,6 +20,7 @@ const MAX_PAGE_SIZE = 50;
  *   &cursor=...          (future/past 연속 조회)
  *   &before=YYYY-MM-DD   (past: 이 날짜 이전만)
  *   &after=YYYY-MM-DD    (future 시작점, 기본 today)
+ *   &title=am            (제목 완전 일치 필터, 페이지네이션에도 유지)
  */
 export async function GET(request: NextRequest) {
   if (!isNotionConfigured() || !notion) {
@@ -46,6 +47,7 @@ export async function GET(request: NextRequest) {
   const cursor = searchParams.get("cursor");
   const beforeParam = searchParams.get("before");
   const afterParam = searchParams.get("after");
+  const titleQuery = searchParams.get("title")?.trim() || null;
 
   const pageSize = Math.min(
     Math.max(Number(searchParams.get("pageSize") ?? DEFAULT_PAGE_SIZE), 1),
@@ -80,12 +82,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let filter: any;
+    if (titleQuery && !titleProp) {
+      return NextResponse.json(
+        { error: "제목(title) 속성이 있는 Notion DB가 필요합니다." },
+        { status: 400 }
+      );
+    }
+
+    let dateFilter: any;
     let sortDirection: "ascending" | "descending" = "ascending";
 
     if (direction === "past") {
       sortDirection = "descending";
-      filter = {
+      dateFilter = {
         property: dateProp,
         date: { before: beforeParam! },
       };
@@ -98,12 +107,25 @@ export async function GET(request: NextRequest) {
         afterDate = afterParam.slice(0, 10);
       }
 
-      filter = {
+      dateFilter = {
         property: dateProp,
         date: { on_or_after: afterDate },
       };
       sortDirection = "ascending";
     }
+
+    const filter =
+      titleQuery && titleProp
+        ? {
+            and: [
+              dateFilter,
+              {
+                property: titleProp,
+                title: { equals: titleQuery },
+              },
+            ],
+          }
+        : dateFilter;
 
     const response = await client.databases.query({
       database_id: databaseId,

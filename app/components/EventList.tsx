@@ -23,9 +23,16 @@ type EventListProps = {
   hasMoreFuture: boolean
   error: string | null
   todayKey: string
+  anchorDate: string
   prependTick: number
+  amOnly: boolean
+  focus: "today" | "start" | null
   onLoadPast: () => void
   onLoadFuture: () => void
+  onGoToday: () => void
+  onToggleAm: () => void
+  onGoMonth: (month: string) => void
+  onFocusHandled: () => void
 }
 
 type DayGroup = {
@@ -73,6 +80,23 @@ function groupByDay(items: EventItem[], todayKey: string): DayGroup[] {
   }))
 }
 
+function todayLineIndex(
+  groups: DayGroup[],
+  todayKey: string,
+  anchorDate: string,
+  hasMoreFuture: boolean
+): number | "end" | null {
+  const idx = groups.findIndex(
+    group => group.key !== "no-date" && group.key >= todayKey
+  )
+  if (idx > 0) return idx
+  if (idx === 0 && anchorDate <= todayKey) return 0
+  if (idx < 0 && !hasMoreFuture && anchorDate <= todayKey && groups.length > 0) {
+    return "end"
+  }
+  return null
+}
+
 export function EventList({
   items,
   loading,
@@ -82,9 +106,16 @@ export function EventList({
   hasMoreFuture,
   error,
   todayKey,
+  anchorDate,
   prependTick,
+  amOnly,
+  focus,
   onLoadPast,
-  onLoadFuture
+  onLoadFuture,
+  onGoToday,
+  onToggleAm,
+  onGoMonth,
+  onFocusHandled
 }: EventListProps) {
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const bottomSentinelRef = useRef<HTMLDivElement>(null)
@@ -93,6 +124,8 @@ export function EventList({
   const didScrollToToday = useRef(false)
 
   const groups = useMemo(() => groupByDay(items, todayKey), [items, todayKey])
+  const lineIndex = todayLineIndex(groups, todayKey, anchorDate, hasMoreFuture)
+  const showEmptyTodayLine = items.length === 0 && anchorDate === todayKey
 
   // 위로 붙이기 직전 스크롤 스냅샷은 page가 prependTick을 올리기 전에
   // layout에서 이전 height를 잡아야 하므로, tick 변경 직전 height를 보존
@@ -128,6 +161,18 @@ export function EventList({
   onLoadFutureRef.current = onLoadFuture
 
   useEffect(() => {
+    if (loading || !focus) return
+    const id = focus === "today" ? "today-line" : "list-start"
+    const el = document.getElementById(id)
+    if (!el) return
+    const header = document.querySelector(".app-header")
+    const headerH = header?.getBoundingClientRect().height ?? 0
+    const top = el.getBoundingClientRect().top + window.scrollY - headerH - 8
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" })
+    onFocusHandled()
+  }, [loading, focus, items, onFocusHandled])
+
+  useEffect(() => {
     if (loading) return
 
     const topEl = topSentinelRef.current
@@ -150,11 +195,34 @@ export function EventList({
     return () => observer.disconnect()
   }, [loading, items.length])
 
+  const monthValue = anchorDate.slice(0, 7)
+
   return (
     <main style={styles.main}>
-      <header style={styles.header}>
-        <h1 style={styles.title}>캘린더</h1>
-        {/* <p style={styles.subtitle}>위·아래로 스크롤해 일정을 더 불러오세요</p> */}
+      <header className="app-header">
+        <h1 className="app-header-title">캘린더</h1>
+        <div className="app-header-actions">
+          <button type="button" className="header-btn" onClick={onGoToday}>
+            오늘
+          </button>
+          <button
+            type="button"
+            className={amOnly ? "header-btn is-active" : "header-btn"}
+            aria-pressed={amOnly}
+            onClick={onToggleAm}
+          >
+            am
+          </button>
+          <input
+            className="month-input"
+            type="month"
+            aria-label="월 이동"
+            value={monthValue}
+            onChange={event => {
+              if (event.target.value) onGoMonth(event.target.value)
+            }}
+          />
+        </div>
       </header>
 
       {error && <div style={styles.error}>{error}</div>}
@@ -174,72 +242,80 @@ export function EventList({
           </div>
 
           {items.length === 0 ? (
-            <div style={styles.empty}>
-              오늘 이후 일정이 없습니다.
-              <br />
-              <span style={{ fontSize: "0.8125rem" }}>
-                위로 스크롤하면 과거 일정을 볼 수 있어요.
-              </span>
+            <div id="list-start">
+              {showEmptyTodayLine && (
+                <div id="today-line" className="today-line" />
+              )}
+              <div style={styles.empty}>
+                {amOnly ? "am 일정이 없습니다." : "표시할 일정이 없습니다."}
+              </div>
             </div>
           ) : (
-            <div style={styles.timeline}>
-              {groups.map(group => (
-                <section
-                  key={group.key}
-                  ref={group.isToday ? todayAnchorRef : undefined}
-                  style={styles.daySection}
-                >
-                  <h2
-                    style={{
-                      ...styles.dayLabel,
-                      ...(group.isToday ? styles.dayLabelToday : null)
-                    }}
+            <div id="list-start" style={styles.timeline}>
+              {groups.map((group, index) => (
+                <div key={group.key}>
+                  {lineIndex === index && (
+                    <div id="today-line" className="today-line" />
+                  )}
+                  <section
+                    ref={group.isToday ? todayAnchorRef : undefined}
+                    style={styles.daySection}
                   >
-                    {group.label}
-                  </h2>
-                  <ul style={styles.list}>
-                    {group.items.map(item => {
-                      const time = formatTime(item.date)
-                      const content = (
-                        <>
-                          <div style={styles.timeCol}>
-                            {time ?? <span style={styles.allDay}>종일</span>}
-                          </div>
-                          <div style={styles.bodyCol}>
-                            <div style={styles.itemTitle}>{item.title}</div>
-                            {item.location && (
-                              <div style={styles.meta}>{item.location}</div>
+                    <h2
+                      style={{
+                        ...styles.dayLabel,
+                        ...(group.isToday ? styles.dayLabelToday : null)
+                      }}
+                    >
+                      {group.label}
+                    </h2>
+                    <ul style={styles.list}>
+                      {group.items.map(item => {
+                        const time = formatTime(item.date)
+                        const content = (
+                          <>
+                            <div style={styles.timeCol}>
+                              {time ?? <span style={styles.allDay}>종일</span>}
+                            </div>
+                            <div style={styles.bodyCol}>
+                              <div style={styles.itemTitle}>{item.title}</div>
+                              {item.location && (
+                                <div style={styles.meta}>{item.location}</div>
+                              )}
+                            </div>
+                            {item.url && (
+                              <span style={styles.chevron} aria-hidden>
+                                ›
+                              </span>
                             )}
-                          </div>
-                          {item.url && (
-                            <span style={styles.chevron} aria-hidden>
-                              ›
-                            </span>
-                          )}
-                        </>
-                      )
+                          </>
+                        )
 
-                      return (
-                        <li key={item.id} style={styles.item}>
-                          {item.url ? (
-                            <a
-                              href={item.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={styles.itemLink}
-                              aria-label={`${item.title} 자세히 보기`}
-                            >
-                              {content}
-                            </a>
-                          ) : (
-                            <div style={styles.itemRow}>{content}</div>
-                          )}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </section>
+                        return (
+                          <li key={item.id} style={styles.item}>
+                            {item.url ? (
+                              <a
+                                href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={styles.itemLink}
+                                aria-label={`${item.title} 자세히 보기`}
+                              >
+                                {content}
+                              </a>
+                            ) : (
+                              <div style={styles.itemRow}>{content}</div>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </section>
+                </div>
               ))}
+              {lineIndex === "end" && (
+                <div id="today-line" className="today-line" />
+              )}
             </div>
           )}
 
@@ -316,7 +392,7 @@ const styles: Record<string, CSSProperties> = {
   },
   dayLabel: {
     position: "sticky",
-    top: 0,
+    top: "var(--app-header-height)",
     zIndex: 2,
     margin: "0 0 0.5rem",
     padding: "0.45rem 0",

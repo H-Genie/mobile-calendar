@@ -24,3 +24,5 @@ npm-debug.log*
 *.swp
 *.swo
 next-env.d.ts
+
+tsconfig.tsbuildinfo

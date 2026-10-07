@@ -17,10 +17,70 @@ body {
 }
 
 .app-shell {
+  --app-header-height: 52px;
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
   background: #fff;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: var(--app-header-height);
+  margin: 0 -1rem 12px;
+  padding: 8px 1rem;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid #efeff4;
+}
+
+.app-header-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.header-btn,
+.month-input {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #d8d8de;
+  border-radius: 8px;
+  background: #fff;
+  color: #1c1c1e;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.header-btn.is-active {
+  background: #007aff;
+  border-color: #007aff;
+  color: #fff;
+}
+
+.month-input {
+  width: 7.4rem;
+  padding: 0 6px;
+}
+
+.today-line {
+  height: 2px;
+  margin: 4px 0 10px;
+  background: #007aff;
+  border-radius: 999px;
 }
