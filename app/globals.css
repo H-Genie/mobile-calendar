@@ -87,3 +87,132 @@ body {
   background: #007aff;
   border-radius: 999px;
 }
+
+.calendar-main {
+  padding: 1.25rem 1rem 2.5rem;
+}
+
+.calendar-error {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: #fff0f0;
+  color: #c62828;
+  border-radius: 10px;
+  font-size: 0.875rem;
+}
+
+.calendar-empty {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: #8e8e93;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.calendar-sentinel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 36px;
+  padding: 0.5rem 0;
+}
+
+.calendar-hint {
+  font-size: 0.75rem;
+  color: #8e8e93;
+}
+
+.calendar-hint.is-muted {
+  color: #c7c7cc;
+}
+
+.calendar-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.day-section {
+  margin: 0;
+}
+
+.day-label {
+  position: sticky;
+  top: var(--app-header-height);
+  z-index: 2;
+  margin: 0 0 0.5rem;
+  padding: 0.45rem 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #3a3a3c;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.day-label.is-today {
+  color: #007aff;
+}
+
+.event-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.event-item {
+  padding: 0;
+  background: #f9f9fb;
+  border-radius: 12px;
+  border: 1px solid #efeff4;
+  overflow: hidden;
+}
+
+.event-link,
+.event-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.75rem 0.75rem 0.875rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.event-time {
+  flex: 0 0 3.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #007aff;
+  align-self: flex-start;
+  padding-top: 2px;
+  min-height: 1em;
+}
+
+.event-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.event-title {
+  font-size: 0.975rem;
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.event-meta {
+  margin-top: 0.3rem;
+  font-size: 0.8125rem;
+  color: #8e8e93;
+}
+
+.event-chevron {
+  flex: 0 0 auto;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: #c7c7cc;
+  font-weight: 300;
+  padding-left: 0.25rem;
+}

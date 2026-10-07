@@ -1,47 +1,66 @@
 import { NextRequest, NextResponse } from "next/server";
-import { notion, isNotionConfigured } from "@/lib/notion";
-import {
-  findPropNames,
-  mapNotionRows,
-  todayISO,
-} from "@/lib/events";
+import { notion, isNotionConfigured, getDatabaseId } from "@/lib/notion";
+import { findPropNames, mapNotionRows } from "@/lib/events";
+import { todayISO } from "@/lib/date";
+import { buildNotionQuery, type Direction } from "@/lib/notionQuery";
 
 type NotionClient = NonNullable<typeof notion>;
-type Direction = "initial" | "future" | "past";
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
 
+type SchemaCache = {
+  titleProp: string | null;
+  dateProp: string | null;
+  fetchedAt: number;
+};
+
+const SCHEMA_TTL_MS = 5 * 60 * 1000;
+const schemaCache = new Map<string, SchemaCache>();
+
+async function getSchema(
+  client: NotionClient,
+  databaseId: string
+): Promise<SchemaCache> {
+  const cached = schemaCache.get(databaseId);
+  if (cached && Date.now() - cached.fetchedAt < SCHEMA_TTL_MS) {
+    return cached;
+  }
+
+  const database = await client.databases.retrieve({
+    database_id: databaseId,
+  });
+  const properties = (database as any).properties ?? {};
+  const names = findPropNames(properties);
+  const next: SchemaCache = { ...names, fetchedAt: Date.now() };
+  schemaCache.set(databaseId, next);
+  return next;
+}
+
 /**
  * Notion Database 페이지네이션 API
  *
- * GET /api/notion?databaseId=...&direction=initial|future|past
+ * GET /api/notion?direction=initial|future|past
  *   &pageSize=20
- *   &cursor=...          (future/past 연속 조회)
- *   &before=YYYY-MM-DD   (past: 이 날짜 이전만)
- *   &after=YYYY-MM-DD    (future 시작점, 기본 today)
- *   &title=am            (제목 완전 일치 필터, 페이지네이션에도 유지)
+ *   &cursor=...
+ *   &before=YYYY-MM-DD
+ *   &after=YYYY-MM-DD
+ *   &title=am   (선택, 서버 필터)
  */
 export async function GET(request: NextRequest) {
   if (!isNotionConfigured() || !notion) {
     return NextResponse.json(
       {
-        error: "NOTION_API_KEY가 설정되지 않았습니다. .env에 추가하세요.",
+        error:
+          "NOTION_API_KEY / DATABASE_ID가 설정되지 않았습니다. .env에 추가하세요.",
       },
       { status: 503 }
     );
   }
 
   const client = notion as NotionClient;
+  const databaseId = getDatabaseId()!;
   const searchParams = request.nextUrl.searchParams;
-  const databaseId = searchParams.get("databaseId");
-
-  if (!databaseId) {
-    return NextResponse.json(
-      { error: "databaseId 쿼리 파라미터가 필요합니다." },
-      { status: 400 }
-    );
-  }
 
   const direction = (searchParams.get("direction") ?? "initial") as Direction;
   const cursor = searchParams.get("cursor");
@@ -69,11 +88,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const database = await client.databases.retrieve({
-      database_id: databaseId,
-    });
-    const properties = (database as any).properties ?? {};
-    const { titleProp, dateProp } = findPropNames(properties);
+    const { titleProp, dateProp } = await getSchema(client, databaseId);
 
     if (!dateProp) {
       return NextResponse.json(
@@ -89,43 +104,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let dateFilter: any;
-    let sortDirection: "ascending" | "descending" = "ascending";
-
-    if (direction === "past") {
-      sortDirection = "descending";
-      dateFilter = {
-        property: dateProp,
-        date: { before: beforeParam! },
-      };
-    } else {
-      // initial / future: 오늘(또는 after) 이후
-      let afterDate = todayISO();
-      if (afterParam === "today") {
-        afterDate = todayISO();
-      } else if (afterParam && /^\d{4}-\d{2}-\d{2}/.test(afterParam)) {
-        afterDate = afterParam.slice(0, 10);
-      }
-
-      dateFilter = {
-        property: dateProp,
-        date: { on_or_after: afterDate },
-      };
-      sortDirection = "ascending";
-    }
-
-    const filter =
-      titleQuery && titleProp
-        ? {
-            and: [
-              dateFilter,
-              {
-                property: titleProp,
-                title: { equals: titleQuery },
-              },
-            ],
-          }
-        : dateFilter;
+    const { filter, sortDirection } = buildNotionQuery({
+      direction,
+      dateProp,
+      titleProp,
+      titleQuery,
+      beforeParam,
+      afterParam,
+      today: todayISO(),
+    });
 
     const response = await client.databases.query({
       database_id: databaseId,
@@ -142,7 +129,6 @@ export async function GET(request: NextRequest) {
 
     let events = mapNotionRows(response.results ?? [], titleProp, dateProp);
 
-    // past는 최신→과거 순으로 오므로, 화면용으로 오름차순 뒤집기
     if (direction === "past") {
       events = events.reverse();
     }

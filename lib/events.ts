@@ -60,18 +60,3 @@ export function mapNotionRows(
     };
   });
 }
-
-/** YYYY-MM-DD (로컬 기준) */
-export function todayISO(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-/** 날짜 키만 추출 (그룹핑용) */
-export function dateKey(value: string | null): string {
-  if (!value) return "no-date";
-  return value.slice(0, 10);
-}
